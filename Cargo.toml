@@ -5,14 +5,25 @@ edition = "2021"
 
 [workspace]
 resolver = "2"
+members = ["physics", "character", "materials", "level_builder", "world"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.14.0" }
-avian3d = "0.1.1"
-bevy_egui = "0.28.0"
+physics = { path = "physics" }
+materials = { path = "materials" }
+character = { path = "character" }
+world = { path = "world" }
+level_builder = { path = "level_builder" }
+
+bevy = { version = "0.14.2", features = ["serialize"] }
+avian3d = "0.1.2"
 gltf = "1.4.1"
+
+bevy_egui = "0.29.0"
+bevy-persistent = { version = "0.6.0", features = ["toml"] }
+serde = "1.0.210"
+
 
 [profile.dev]
 opt-level = 1

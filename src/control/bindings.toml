@@ -1,0 +1,13 @@
+[keys]
+KeyW = "Forward"
+KeyS = "Backward"
+ShiftLeft = "Sprint"
+KeyD = "Right"
+ArrowRight = "Right"
+ArrowLeft = "Left"
+KeyA = "Left"
+Space = "Jump"
+ArrowUp = "Forward"
+ArrowDown = "Backward"
+
+[mouse]

@@ -1,36 +1,33 @@
 #![feature(fn_traits)]
 
-pub mod metadata;
-pub mod ui;
-pub mod character;
-pub mod environment;
-pub mod utils;
+mod metadata;
+mod ui;
+mod world;
+mod utils;
+mod control;
 
-use metadata::AssetManagerPlugin;
-use ui::UiPlugin;
-use character::CharacterPlugin;
-use environment::WorldPlugin;
-
-
-use bevy::{
-	prelude::*,
-	window::WindowMode
-	// ecs::schedule::Stepping
+use self::{
+	metadata::AssetManagerPlugin,
+	control::ControlPlugin,
+	ui::UiPlugin,
+	world::WorldPlugin,
 };
+
+use bevy::prelude::*;
 use avian3d::debug_render::PhysicsDebugPlugin;
 
-// #[cfg(not(any(target_os = "android", target_os = "ios")))]
-// fn main() {
-// 	App::new().add_plugins((
-// 		DefaultPlugins,
-// 		DebugPlugin,
-// 		AssetManagerPlugin,
-// 		UiPlugin,
-// 		CharacterPlugin,
-// 		WorldPlugin
-// 	)).run();
-// }
+pub struct BasePlugin;
 
+impl Plugin for BasePlugin {
+	fn build(&self, app: &mut App) {
+		app.add_plugins((
+			AssetManagerPlugin,
+			ControlPlugin,
+			UiPlugin,
+			WorldPlugin,
+		));
+	}
+}
 
 pub struct DebugPlugin;
 

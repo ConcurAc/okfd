@@ -1,0 +1,9 @@
+[package]
+name = "level_builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+materials = { path = "../materials" }
+bevy = "0.14.2"
+avian3d = "0.1.2"

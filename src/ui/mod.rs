@@ -3,13 +3,7 @@ use super::metadata::{
 	AssetTarget
 };
 
-use bevy::{
-	input::{
-		mouse::MouseMotion,
-		touch::TouchPhase
-	},
-	prelude::*,
-};
+use bevy::prelude::*;
 
 use bevy_egui::{
 	egui,
@@ -32,13 +26,10 @@ impl Plugin for UiPlugin {
 			.add_systems(Update, (
 				load_loader_menu,
 				load_edit_menu,
-				free_camera_view
-			));
+			)
+		);
 	}
 }
-
-#[derive(Component)]
-pub struct Cursor;
 
 #[derive(States, Hash, Debug, Default, Eq, PartialEq, Clone)]
 enum CharacterMenuTab {
@@ -206,153 +197,3 @@ fn populate_asset_selection_menu(
 	// });
 }
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-fn free_camera_view(
-	mut camera_query: Query<&mut Transform, (With<Camera>, Without<Cursor>)>,
-	mut cursor_query: Query<&mut Transform, (With<Cursor>, Without<Camera>)>,
-	mut motion_reader: EventReader<MouseMotion>,
-	mouse_button_input: Res<ButtonInput<MouseButton>>,
-	time: Res<Time>,
-	mut context: EguiContexts,
-) {
-	if context.ctx_mut().wants_pointer_input() {
-		return;
-	}
-	if let Some(motion) = motion_reader.read().max_by(|&x, &y| x.delta.length().total_cmp(&y.delta.length())) {
-		for input in mouse_button_input.get_pressed() {
-			match input {
-				/* Rotate */
-				MouseButton::Left => {
-					let rotation_x = Quat::from_rotation_x(-motion.delta.y * time.delta_seconds());
-					let rotation_y = Quat::from_rotation_y(-motion.delta.x * time.delta_seconds());
-					// let angle = motion.delta.length().to_radians();
-					// let rotation_axis = Vec3::new(-motion.delta.y, -motion.delta.x, 0.).normalize();
-					for (mut camera_transform, cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter()) {
-						camera_transform.look_at(cursor_transform.translation, Vec3::Y);
-						let distance = (camera_transform.translation - cursor_transform.translation).length();
-						camera_transform.translation = cursor_transform.translation;
-						camera_transform.rotation *= rotation_x;
-						camera_transform.rotation *= rotation_y;
-						let back = camera_transform.back() * distance;
-						camera_transform.translation += back;
-					}
-					// for (mut camera_transform, cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter()) {
-					// 	camera_transform.look_at(cursor_transform.translation, Vec3::Y);
-					// 	let distance = (camera_transform.translation - cursor_transform.translation).length();
-					// 	camera_transform.translation = cursor_transform.translation;
-					// 	camera_transform.rotate_local_axis(rotation_axis, angle);
-					// 	let forward = transform.forward();
-					// 	transform.look_to(forward.xyz(), Vec3::Y);
-					// 	let back = camera_transform.back() * distance;
-					// 	camera_transform.translation += back;
-					// }
-				},
-				/* Pan */
-				MouseButton::Middle => {
-					for (mut camera_transform, mut cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter_mut()) {
-						let right = camera_transform.right() * motion.delta.x * time.delta_seconds();
-						let down = camera_transform.down() * motion.delta.y * time.delta_seconds();
-						camera_transform.translation += right;
-						camera_transform.translation += down;
-						cursor_transform.translation += right;
-						cursor_transform.translation += down;
-					}
-				},
-				/* Zoom + Translate Y */
-				MouseButton::Right => {
-					for (mut camera_transform, mut cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter_mut()) {
-						let distance = (camera_transform.translation - cursor_transform.translation).length();
-						let neg_y = Vec3::NEG_Y * motion.delta.y * time.delta_seconds();
-						let forward = Vec3::ZERO.lerp(camera_transform.forward() * motion.delta.x * time.delta_seconds(), distance);
-						camera_transform.translation += neg_y;
-						camera_transform.translation += forward;
-						cursor_transform.translation += neg_y;
-					}
-				},
-				_ => ()
-			}
-		}
-	}
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-fn free_camera_view(
-	mut camera_query: Query<&mut Transform, (With<Camera>, Without<Cursor>)>,
-	mut cursor_query: Query<&mut Transform, (With<Cursor>, Without<Camera>)>,
-	mut touch_inputs: EventReader<TouchInput>,
-	mut prev_inputs: Local<Vec<TouchInput>>,
-	time: Res<Time>,
-
-	mut context: EguiContexts,
-) {
-	if context.ctx_mut().wants_pointer_input() {
-		return;
-	}
-	let inputs: Vec<TouchInput> = touch_inputs.read().cloned().collect();
-	/* Rotate */
-	if inputs.len() == 1 {
-		let input = inputs[0];
-		match input.phase {
-			TouchPhase::Moved => {
-				if let Some(prev_input) = prev_inputs.iter().find(|x| x.id == input.id) {
-					let rotation_x = Quat::from_rotation_x(prev_input.position.y - input.position.y * time.delta_seconds());
-					let rotation_y = Quat::from_rotation_y(prev_input.position.x - input.position.x * time.delta_seconds());
-
-					for (mut camera_transform, cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter()) {
-						camera_transform.look_at(cursor_transform.translation, Vec3::Y);
-						let distance = (camera_transform.translation - cursor_transform.translation).length();
-						camera_transform.translation = cursor_transform.translation;
-						camera_transform.rotation *= rotation_x;
-						camera_transform.rotation *= rotation_y;
-						let back = camera_transform.back() * distance;
-						camera_transform.translation += back;
-					}
-				}
-			}
-			_ => (),
-		}
-	} else if inputs.len() >= 2 {
-		/* Pan */
-		if let Some(first_prev_input) = prev_inputs.iter().find(|x| x.id == inputs[0].id) {
-			if let Some(second_prev_input) = prev_inputs.iter().find(|x| x.id == inputs[1].id) {
-				let first_delta = inputs[0].position - first_prev_input.position;
-				let second_delta = inputs[1].position - second_prev_input.position;
-				let delta = first_delta - second_delta;
-				let pan = (first_delta + second_delta);
-				let zoom = delta.length();
-				for (mut camera_transform, mut cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter_mut()) {
-					let right = camera_transform.right() * pan.x * time.delta_seconds();
-					camera_transform.translation += right;
-					cursor_transform.translation += right;
-
-					let down = camera_transform.down() * pan.y * time.delta_seconds();
-					camera_transform.translation += down;
-					cursor_transform.translation += down;
-
-					let distance = camera_transform.translation.distance(cursor_transform.translation);
-					let forward = Vec3::ZERO.lerp(camera_transform.forward() * zoom * time.delta_seconds(), distance);
-					camera_transform.translation += forward;
-				}
-			}
-		}
-
-
-	}
-	*prev_inputs = inputs;
-	//
-	// 			/* Zoom + Translate Y */
-	// 			MouseButton::Right => {
-	// 				for (mut camera_transform, mut cursor_transform) in camera_query.iter_mut().zip(cursor_query.iter_mut()) {
-	//
-	// 					let neg_y = Vec3::NEG_Y * motion.delta.y * time.delta_seconds();
-	//
-	// 					camera_transform.translation += neg_y;
-	//
-	// 					cursor_transform.translation += neg_y;
-	// 				}
-	// 			},
-	// 			_ => ()
-	// 		}
-	// 	}
-	// }
-}
